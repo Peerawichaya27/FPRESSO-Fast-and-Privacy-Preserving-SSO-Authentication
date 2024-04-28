@@ -1,16 +1,38 @@
 from flask import Flask, request, jsonify
-import base64
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
+# Here, we simulate password hashing as it would be stored in a secure system.
+users = {
+    "user3": {
+        "password_hash": generate_password_hash("pass3"),
+        "role": "admin"
+    }
+}
+
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
-    encoded = request.json.get('credentials')
-    username, password = base64.b64decode(encoded).decode('utf-8').split(':')
-    # Implement actual user verification logic here
-    if username == "user3" and password == "password3":  # Example validation
-        return jsonify({'status': 'success', 'username': username, 'role': 'manager'}), 200
-    return jsonify({'message': 'Invalid credentials'}), 401
+    credentials = request.json
+    username = credentials['username']
+    password = credentials['password']
+
+    user = users.get(username)
+
+    # Verify the password against the hashed version
+    if user and check_password_hash(user['password_hash'], password):
+        # Authentication successful
+        return jsonify({
+            'status': 'success',
+            'username': username,
+            'role': user['role']
+        }), 200
+    else:
+        # Authentication failed
+        return jsonify({
+            'status': 'failure',
+            'message': 'Invalid credentials'
+        }), 401
 
 if __name__ == '__main__':
-    app.run(port=5002,debug=True)
+    app.run(port=5002, debug=True)

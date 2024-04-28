@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify, redirect, make_response, render_template_string
 import requests
-import base64
 
 app = Flask(__name__)
 
 users = {
-    "user3": {"password": "password3", "role": "manager"}
+    "user3": {"password": "pass3", "role": "admin"}
 }
 
 @app.route('/')
@@ -24,34 +23,34 @@ def home():
 def login():
     username = request.form['username']
     password = request.form['password']
-    user = users.get(username)
-    if user and user['password'] == password:
-        credentials = base64.b64encode(f"{username}:{password}".encode()).decode('utf-8')
-        auth_response = requests.post('http://localhost:5002/authenticate', json={'credentials': credentials})
-        if auth_response.status_code == 200:
-            user_info = {'username': username, 'role': user['role']}
-            sso_response = requests.post('http://localhost:5000/authenticate', json=user_info)
-            if sso_response.status_code == 200:
-                resp = make_response(redirect('/protected'))
-                resp.set_cookie('sso_token', sso_response.json()['sso_token'], httponly=True, secure=True, samesite='Lax')
-                return resp
-            return 'SSO Service Error', sso_response.status_code
-        return 'Authentication Service Error', auth_response.status_code
-    return 'Invalid Credentials', 401
+    auth_response = requests.post(
+        'http://localhost:5002/authenticate', 
+        json={'username': username, 'password': password}
+    )
+    if auth_response.status_code == 200:
+        sso_response = requests.get('http://localhost:5000/authenticate', 
+                                        headers={'username':username, 'appNo': 'app3'})
+        if sso_response.status_code == 200:
+            resp = make_response(redirect('/protected'))
+            resp.set_cookie('sso_token', sso_response.json()['sso_token'], httponly=True, secure=True, samesite='Lax')
+            return resp
+        return 'SSO Service Error', sso_response.status_code
+    return 'Authentication Service Error', auth_response.status_code
 
 @app.route('/protected')
 def protected():
     token = request.cookies.get('sso_token')
+    # Assuming the app knows its role or fetches it from some configuration
     if token:
-        verify_response = requests.get('http://localhost:5000/verify', cookies={'sso_token': token})
+        verify_response = requests.get('http://localhost:5000/verify', headers={'appNo': 'app3'}, cookies={'sso_token': token})
         if verify_response.status_code == 200:
             username = verify_response.json()['username']
-            role = verify_response.json()['role']
+            role = verify_response.json()['role']  # This will now reflect the role sent by the app
             return render_template_string(f'''
                 <h1>Protected Content</h1>
                 <p>Username: {username}</p>
                 <p>Role: {role}</p>
-                <a href="/logout">Home</a>
+                <a href="/logout">Logout</a>
             ''')
     return 'Access denied <a href="/">Login</a>', 403
 
@@ -63,4 +62,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(port=5103, debug=True)
-

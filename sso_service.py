@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, make_response
+import requests
 import jwt
 import datetime
 
@@ -6,11 +7,12 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sso_secret_key'
 ALGORITHM = 'HS256'
 
-@app.route('/authenticate', methods=['POST'])
+@app.route('/authenticate', methods=['GET'])
 def authenticate():
-    username = request.json.get('username')
-    role = request.json.get('role')
-    
+    username = request.headers.get('username')
+    app_num = request.headers.get('appNo')
+    author = requests.get('http://localhost:5003/get_role', headers={'username': username, 'appNo': app_num})
+    role = author.json()['role']
     # Create SSO token with user details
     sso_token = jwt.encode({
         'sub': username,
@@ -25,9 +27,12 @@ def authenticate():
 @app.route('/verify', methods=['GET'])
 def verify():
     sso_token = request.cookies.get('sso_token')
+    app_num = request.headers.get('appNo')  # Get role from header
     try:
         decoded = jwt.decode(sso_token, app.config['SECRET_KEY'], algorithms=[ALGORITHM])
-        return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': decoded['role']}), 200
+        roles = decoded['role']
+        app_role = roles[app_num]['role']
+        return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': app_role}), 200
     except jwt.ExpiredSignatureError:
         return jsonify({'status': 'error', 'message': 'Token expired'}), 401
     except jwt.InvalidTokenError:
