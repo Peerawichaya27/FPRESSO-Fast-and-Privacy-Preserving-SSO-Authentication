@@ -31,7 +31,7 @@ def login():
     password = request.form['password']
     user = users.get(username)
     # Send user data to Authentication Service 2
-    auth_response = requests.post('http://authservice2.us-east-1.elasticbeanstalk.com/authenticate', json={'username': username, 'password': password, 'role': user['role'], 'appNo' : 'app3'})
+    auth_response = requests.post('http://authservice2.ap-southeast-1.elasticbeanstalk.com/authenticate', json={'username': username, 'password': password, 'role': user['role'], 'appNo' : 'app3'})
     if auth_response.status_code == 200:
         # Authenticate with SSO service
         sso_response = requests.get('https://sso-service-swlzbjlflq-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app3'})

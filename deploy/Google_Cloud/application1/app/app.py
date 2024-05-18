@@ -53,7 +53,7 @@ def get_cookie():
 @cross_origin()
 def check():
     tok_resp = requests.get('https://app2-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app1'})
-    tok2_resp = requests.get('https://app3-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app1'})
+    tok2_resp = requests.get('https://3vdwbxffgv.ap-southeast-1.awsapprunner.com/getCookie', headers={'appNo': 'app1'})
     if tok_resp and tok_resp.json()['sso_token'] != '':
         sso_token = tok_resp.json()['sso_token']
         resp = make_response(redirect('/protected'))
