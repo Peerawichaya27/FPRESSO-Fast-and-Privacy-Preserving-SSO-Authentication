@@ -161,3 +161,9 @@ Start the test:
 ```bash
   python <TEST-NAME.py>
 ```
+
+## Authors
+
+- [@peerawichaya](https://github.com/Peerawichaya27)
+- [@soravichpoon](https://github.com/soravichpoon)
+- [@pawatpai](https://github.com/pawatpai)
