@@ -50,10 +50,10 @@ def verify():
     app_num = request.headers.get('appNo')  # Get role from header
     try:
         decoded = jwt.decode(sso_token, app.config['SECRET_KEY'], algorithms=[ALGORITHM])
-        # roles = decoded['role']
-        # app_role = roles[app_num]['role']
-        # return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': app_role}), 200
-        return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': 'user'}), 200
+        roles = decoded['role']
+        app_role = roles[app_num]['role']
+        return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': app_role}), 200
+        # return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': 'user'}), 200
     except jwt.ExpiredSignatureError:
         return jsonify({'status': 'error', 'message': 'Token expired'}), 401
     except jwt.InvalidTokenError:

@@ -1,39 +1,99 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, redirect, make_response, render_template_string, jsonify
 from flask_cors import CORS, cross_origin
-import jwt
-import datetime
+import requests
 import os
 
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'jwt_secret_key1'
 CORS(app)
+
+# Simulated user data
+users = {
+    "user1": {"password": "pass1", "role": "admin"}
+}
 
 @app.route('/')
 @cross_origin()
-def hello():
-    return 'auth1'
+def home():
+    return render_template_string('''
+        <h1>Welcome to App1</h1>
+        <form action="/login" method="post">
+            Username: <input type="text" name="username"><br>
+            Password: <input type="password" name="password"><br>
+            <input type="submit" value="Login">
+            <a href="/check">SSO</a>
+        </form>
+    ''')
 
-@app.route('/authenticate', methods=['POST'])
+@app.route('/login', methods=['POST', 'GET'])
 @cross_origin()
-def authenticate():
-    users = {
-        "app1": {
-            "user_jwt":jwt.encode({'username': 'user1', 'role': 'admin', 'exp': datetime.datetime.now() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
-        },
-        "app2": {
-            "user_jwt":jwt.encode({'username': 'user2', 'role': 'admin', 'exp': datetime.datetime.now() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
-        }
-    }
-    username = request.json['username'] # Simulated validation
-    role = request.json['role']
-    appNo = request.json['appNo']
-    
-    # Normally here you would validate the password. We simulate it.
-    token = jwt.encode({'username': username, 'role': role, 'exp': datetime.datetime.now() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
-    if users[appNo]['user_jwt'] == token:
-        return jsonify({'status': 'success', 'jwt_token': token}), 200
-    return jsonify({'status': 'failure','message': 'Invalid credentials'}), 401
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    user = users.get(username)
+    # Send user data to Authentication Service 1
+    auth_response = requests.post('https://auth-service1-swlzbjlflq-as.a.run.app/authenticate', json={'username': username, 'password': password, 'role': user['role'], 'appNo' : 'app1'})
+    if auth_response.status_code == 200:
+        # Authenticate with SSO service
+        sso_response = requests.get('https://sso-service-swlzbjlflq-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app1'})
+        if sso_response.status_code == 200:
+            global sso_token
+            sso_token = sso_response.json()['sso_token']
+            resp = make_response(redirect('/protected'))
+            resp.set_cookie('sso_token', sso_token, httponly=True, secure=True, samesite='Lax')
+            return resp
+        return 'SSO Service Error', sso_response.status_code
+    return 'Authentication Service Error', auth_response.status_code
+
+@app.route('/getCookie', methods=['GET'])
+@cross_origin()
+def get_cookie():
+    return jsonify({'sso_token': sso_token}), 200
+
+@app.route('/check', methods=['GET'])
+@cross_origin()
+def check():
+    tok_resp = requests.get('https://app2-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app1'})
+    tok2_resp = requests.get('https://3vdwbxffgv.ap-southeast-1.awsapprunner.com/getCookie', headers={'appNo': 'app1'})
+    if tok_resp and tok_resp.json()['sso_token'] != '':
+        sso_token = tok_resp.json()['sso_token']
+        resp = make_response(redirect('/protected'))
+        resp.set_cookie('sso_token', sso_token, httponly=True, secure=True, samesite='Lax')
+        return resp
+    elif tok2_resp and tok2_resp.json()['sso_token'] != '':
+        sso_token = tok2_resp.json()['sso_token']
+        resp = make_response(redirect('/protected'))
+        resp.set_cookie('sso_token', sso_token, httponly=True, secure=True, samesite='Lax')
+        return resp
+    else:
+        resp = make_response(redirect('/protected'))
+        return resp
+
+@app.route('/protected')
+@cross_origin()
+def protected():
+    token = request.cookies.get('sso_token')
+    # Assuming the app knows its role or fetches it from some configuration
+    if token:
+        verify_response = requests.get('https://sso-service-swlzbjlflq-as.a.run.app/verify', headers={'appNo': 'app1'}, cookies={'sso_token': token})
+        if verify_response.status_code == 200:
+            username = verify_response.json()['username']
+            role = verify_response.json()['role']  # This will now reflect the role sent by the app
+            return render_template_string(f'''
+                <h1>Protected Content</h1>
+                <p>Username: {username}</p>
+                <p>Role: {role}</p>
+                <a href="/logout">Logout</a>
+            ''')
+    return 'Access denied <a href="/">Login</a>', 403
+
+@app.route('/logout')
+@cross_origin()
+def logout():
+    global sso_token
+    sso_token = ''
+    resp = make_response(redirect('/'))
+    resp.set_cookie('sso_token', '', expires=0)
+    return resp
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

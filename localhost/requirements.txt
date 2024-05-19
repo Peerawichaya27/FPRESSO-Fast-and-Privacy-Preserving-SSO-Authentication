@@ -6,6 +6,8 @@ charset-normalizer==3.3.2
 click==8.1.7
 colorama==0.4.6
 Flask-Cors==4.0.0
+gcloud==0.18.3
+googleapis-common-protos==1.63.0
 httplib2==0.22.0
 idna==3.7
 itsdangerous==2.2.0
@@ -23,3 +25,5 @@ rsa==4.9
 six==1.16.0
 urllib3==2.2.1
 Werkzeug==3.0.2
+matplotlib.pyplot
+aiohttp
