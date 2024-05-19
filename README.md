@@ -141,8 +141,9 @@ In your source code directory, deploy from source:
 ```bash
    gcloud run deploy
 ```
+
 ## Running Tests
-This part using the code in Test folder to test our system. We also include tradional sso system code in this folder, you can use thees code to compare the performance with our system by deploy it to Google Cloud Run by using steps above. You can follow these steps below to run the test for our system.
+This part using the code in Test folder to test our system. We also include tradional sso system code in this folder, you can use these code to compare the performance with our system by deploy it to Google Cloud Run by using steps above. You can follow these steps below to run the test for our system.
 
 Clone the project:
 
