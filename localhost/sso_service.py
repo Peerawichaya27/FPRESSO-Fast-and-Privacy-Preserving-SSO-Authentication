@@ -92,17 +92,17 @@ def sign_token(token):
     signed_token = token + '.' + signature.hex() # Append signature to the token
     return signed_token
 
-def perturb_token(token):
-    token_bytes = token.encode()
-    random_bytes = os.urandom(len(token_bytes))
-    perturbed_bytes = bytes(a ^ b for a, b in zip(token_bytes, random_bytes))
-    return base64.urlsafe_b64encode(random_bytes + perturbed_bytes).decode()
+# def perturb_token(token):
+#     token_bytes = token.encode()
+#     random_bytes = os.urandom(len(token_bytes))
+#     perturbed_bytes = bytes(a ^ b for a, b in zip(token_bytes, random_bytes))
+#     return base64.urlsafe_b64encode(random_bytes + perturbed_bytes).decode()
 
-def pad_token(token):
-    R1 = os.urandom(32)
-    R2 = os.urandom(32)
-    padded_token = R1 + token.encode() + R2
-    return base64.urlsafe_b64encode(padded_token).decode()
+# def pad_token(token):
+#     R1 = os.urandom(32)
+#     R2 = os.urandom(32)
+#     padded_token = R1 + token.encode() + R2
+#     return base64.urlsafe_b64encode(padded_token).decode()
 
 
 @app.route('/authenticate', methods=['GET'])
