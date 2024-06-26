@@ -120,9 +120,9 @@ def protected():
         if rolehash == user_role["admin"]:
             role = "admin"
             permission = user_permission['admin']
-        elif rolehash == user_role["user"]:
+        elif rolehash == user_role["users"]:
             role = "user"    
-            permission = user_permission['user']    
+            permission = user_permission['users']    
         # verify_response = requests.get('http://localhost:8000/verify', headers={'appNo': 'app1'}, cookies={'sso_token': sign_token})
         # if verify_response.status_code == 200:
             # print("200")
