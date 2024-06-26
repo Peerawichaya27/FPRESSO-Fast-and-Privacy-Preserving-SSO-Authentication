@@ -14,7 +14,7 @@ CORS(app)
 
 # Simulated user data
 users = {
-    "user2": {"password": "pass2", "role" : "admin" }
+    "user2": {"password": "pass2"}
 }
 
 user_role = {
@@ -88,7 +88,6 @@ def verify_token(signed_token):
 def login():
     username = request.form['username']
     password = request.form['password']
-    user = users.get(username)
     # Send user data to Authentication Service 1
     auth_response = requests.post('http://localhost:5001/authenticate', json={'username': username, 'password': password, 'appNo' : 'app2'})
     if auth_response.status_code == 200:

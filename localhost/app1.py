@@ -14,7 +14,7 @@ CORS(app)
 
 # Simulated user data
 users = {
-    "user1": {"password": "pass1", "role" : "admin" }
+    "user1": {"password": "pass1"}
 }
 user_role = {
     "admin":"35a3716d343040c666a071477427535ada70f74ceee8b9d9058d4412cbe40c52",
