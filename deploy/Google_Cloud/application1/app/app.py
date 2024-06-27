@@ -15,9 +15,8 @@ CORS(app)
 
 # Simulated user data
 users = {
-    "user1": {"password": "pass1", "role": "admin"}
+    "user1": {"password": "pass1"}
 }
-
 user_role = {
     "admin":"35a3716d343040c666a071477427535ada70f74ceee8b9d9058d4412cbe40c52",
     "users":"0b35b922fd1c5853cf65b737f49c49d8ef750946b5939443056d94b3a3510dc6"
@@ -26,6 +25,10 @@ user_role = {
 user_permission = {
     "admin":{"Read, Write, Execute"},
     "users":{"Read, Write"}
+}
+permission_hash = {
+    "admin":"138c4b0b96c01b0715d870c11c0853592aa32137c421e73827821fe14c9aab6e",
+    "users":"f6e72ec20d183ec2fcb6a11ec25eb944696ad2ba50569fc7264ad1ee363bf105"
 }
 
 pKey = """-----BEGIN RSA PUBLIC KEY-----
@@ -54,11 +57,9 @@ def home():
 def unpadded_token(padded_token):
     try:
         padded_bytes = base64.urlsafe_b64decode(padded_token)
-        R1 = padded_bytes[:128]
         token_bytes = padded_bytes[128:-128]
-        R2 = padded_bytes[-128:]
 
-        print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
+        # print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
         print(f"Token Bytes: {token_bytes}")
 
         # No XOR operation is needed here since we are simply removing R1 and R2
@@ -139,12 +140,21 @@ def protected():
         decoded = jwt.decode(sign_token, app.config['SECRET_KEY'], algorithms=[ALGORITHM])
         username = decoded["userID"]
         rolehash = decoded['roles']["app1"]
+        permissionhash = decoded['permissions']['app1']
         if rolehash == user_role["admin"]:
             role = "admin"
-            permission = user_permission['admin']
+            if permissionhash == permission_hash["admin"]:
+                permission = user_permission["admin"]
+            else:
+                return 'Access denied <a href="/">Login</a>', 403
         elif rolehash == user_role["users"]:
-            role = "user"    
-            permission = user_permission['users']    
+            role = "user"
+            if permissionhash == permission_hash["users"]:
+                permission = user_permission['users']
+            else:
+                return 'Access denied <a href="/">Login</a>', 403
+        else:
+            return 'Access denied <a href="/">Login</a>', 403
         return render_template_string(f'''
                 <h1>Protected Content</h1>
                 <p>Username: {username}</p>

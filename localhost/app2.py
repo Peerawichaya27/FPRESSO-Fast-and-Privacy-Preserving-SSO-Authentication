@@ -133,17 +133,6 @@ def protected():
                 return 'Access denied <a href="/">Login</a>', 403
         else:
             return 'Access denied <a href="/">Login</a>', 403    
-        # verify_response = requests.get('http://localhost:8000/verify', headers={'appNo': 'app1'}, cookies={'sso_token': sign_token})
-        # if verify_response.status_code == 200:
-            # print("200")
-            # username = verify_response.json()['username']
-            # role = verify_response.json()['role']  # This will now reflect the role sent by the app
-            # return render_template_string(f'''
-            #     <h1>Protected Content</h1>
-            #     <p>Username: {username}</p>
-            #     <p>Role: {role}</p>
-            #     <a href="/logout">Logout</a>
-            # ''')
         return render_template_string(f'''
                 <h1>Protected Content</h1>
                 <p>Username: {username}</p>
