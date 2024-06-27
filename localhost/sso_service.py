@@ -38,7 +38,7 @@ users_data = {
     }
 }
 
-permission = {
+user_permission = {
     "app1":{
         "admin":{"permissions" : "Read, Write, Execute"},
         "user":{"permissions" : "Read, Write"}
@@ -101,75 +101,49 @@ def pad_token(token):
     print(f"Padding: R1={R1.hex()}, R2={R2.hex()}")
     return base64.urlsafe_b64encode(padded_token).decode()
 
-
 @app.route('/authenticate', methods=['GET'])
 @cross_origin()
 def generate_sso_token():
     username = request.headers.get('username')
     app_num = request.headers.get('appNo')
+    
+    if app_num not in users_data or username not in users_data[app_num]:
+        return make_response(jsonify({'error': 'Invalid app number or username'}), 400)
+    
     role = users_data[app_num][username]
-    permissions = permission
-    user_identity_data = {
-        'userID' : username,
-        'roles' : role,
-        'permissions' : permissions
-    }
+    permissions = user_permission
+    
     jwt_token = {
-        "userID": user_identity_data['userID'],
-        "roles": user_identity_data['roles'],
-        "permissions": user_identity_data["permissions"],
+        "userID": username,
+        "roles": {},
+        "permissions": {},
         'exp': datetime.datetime.now() + datetime.timedelta(hours=2)
     }
     
     # hash role permissions
-    for n in users_data[app_num][username]:
-        role_list = users_data[app_num][username][n]
-        roles_hash = hashlib.sha256(','.join(role_list).encode()).hexdigest()
-        jwt_token['roles'][n] = roles_hash
-        permission_list = permission[n][role_list]['permissions']
-        permission_hash = hashlib.sha256(','.join(permission_list).encode()).hexdigest()
-        jwt_token['permissions'][n] = permission_hash
-        # permission_admin_hash = hashlib.sha256(','.join(permission[n]['admin']['permissions']).encode()).hexdigest()
-        # permission_user_hash = hashlib.sha256(','.join(permission[n]['user']['permissions']).encode()).hexdigest()
-        # jwt_token['permissions'][n]['admin'] = permission_admin_hash
+    for apps, user_role in role.items():
+        try:
+            role_hash = hashlib.sha256(','.join(user_role).encode()).hexdigest()
+            jwt_token['roles'][apps] = role_hash
+            permission_hash = hashlib.sha256(','.join(permissions[apps][user_role]['permissions']).encode()).hexdigest()
+            jwt_token['permissions'][apps] = permission_hash
+        except KeyError as e:
+            print(f"KeyError: {e}")
+            print(f"app_num: {app_num}, username: {username}, role: {role}, app: {apps}, user_role: {user_role}")
+            return make_response(jsonify({'error': 'Invalid role or permission data'}), 500)
     
-    # permission_hash = hashlib.sha256(','.join(user_identity_data["permissions"]).encode()).hexdigest()
-    # jwt_token['permissions'] = permission_hash
-    # jwt_token['roles'] = roles_hash
-    
-    #Sign the token with HSM
+    # Sign the token with HSM
     token = jwt.encode(jwt_token, app.config['SECRET_KEY'], algorithm=ALGORITHM)
     signed_token = sign_token(token)
-    
-    # # Perturb the token
-    # perturbed_token = perturb_token(signed_token)
 
     # Padding
     padded_token = pad_token(signed_token)
-    
     sso_token = padded_token
+
     # sso_token = signed_token
     resp = make_response(jsonify({'sso_token': sso_token}))
     resp.set_cookie('sso_token', sso_token, httponly=True, secure=True, samesite='None')
     return resp
-
-# @app.route('/verify', methods=['GET'])
-# @cross_origin()
-# def verify():
-#     sso_token = request.cookies.get('sso_token')
-#     app_num = request.headers.get('appNo')  # Get role from header
-#     try:
-#         decoded = jwt.decode(sso_token, app.config['SECRET_KEY'], algorithms=[ALGORITHM])
-#         userid = decoded['userID']
-#         appNum = decoded['app']
-#         # permission_hash = hashlib.sha256(','.join(user_identity_data["permissions"]).encode()).hexdigest()
-#         app_role = users_data[appNum][userid][app_num]
-#         return jsonify({'status': 'verified', 'username': decoded['userID'], 'role': app_role}), 200
-#         # return jsonify({'status': 'verified', 'username': decoded['sub'], 'role': 'user'}), 200
-#     except jwt.ExpiredSignatureError:
-#         return jsonify({'status': 'error', 'message': 'Token expired'}), 401
-#     except jwt.InvalidTokenError:
-#         return jsonify({'status': 'error', 'message': 'Invalid token'}), 402
 
 if __name__ == '__main__':
     app.run(port=8000, debug=True)
