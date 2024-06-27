@@ -38,6 +38,22 @@ users_data = {
     }
 }
 
+user_permission = {
+    "app1":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Read, Write"}
+        },
+    "app2":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Write"}
+        },
+    "app3":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Read"}
+        }
+    }
+
+
 privKey = """-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEA0gr6/AuK3Z+LSQ7sR4z09b4sdb9roDjgKLTkQoa9yjaFO2oJ
 sQ3fpmx7SFbW57qjAL1VH8hFpfb1CGzXONXc4IramDHFZPORLw6bi5PsTuEDuj45
@@ -90,24 +106,33 @@ def pad_token(token):
 def generate_sso_token():
     username = request.headers.get('username')
     app_num = request.headers.get('appNo')
+    
+    if app_num not in users_data or username not in users_data[app_num]:
+        return make_response(jsonify({'error': 'Invalid app number or username'}), 400)
+    
     role = users_data[app_num][username]
-    user_identity_data = {
-        'userID' : username,
-        'roles' : role,
-    }
+    permissions = user_permission
+    
     jwt_token = {
-        "userID": user_identity_data['userID'],
-        "roles": user_identity_data['roles'],
-        "app" : app_num,
+        "userID": username,
+        "roles": {},
+        "permissions": {},
         'exp': datetime.datetime.now() + datetime.timedelta(hours=2)
     }
     
-    # hash role
-    for n in users_data[app_num][username]:
-        roles_hash = hashlib.sha256(','.join(users_data[app_num][username][n]).encode()).hexdigest()
-        jwt_token['roles'][n] = roles_hash
+    # hash role permissions
+    for apps, user_role in role.items():
+        try:
+            role_hash = hashlib.sha256(','.join(user_role).encode()).hexdigest()
+            jwt_token['roles'][apps] = role_hash
+            permission_hash = hashlib.sha256(','.join(permissions[apps][user_role]['permissions']).encode()).hexdigest()
+            jwt_token['permissions'][apps] = permission_hash
+        except KeyError as e:
+            print(f"KeyError: {e}")
+            print(f"app_num: {app_num}, username: {username}, role: {role}, app: {apps}, user_role: {user_role}")
+            return make_response(jsonify({'error': 'Invalid role or permission data'}), 500)
     
-    #Sign the token with HSM
+    # Sign the token with HSM
     token = jwt.encode(jwt_token, app.config['SECRET_KEY'], algorithm=ALGORITHM)
     signed_token = sign_token(token)
 
@@ -115,9 +140,11 @@ def generate_sso_token():
     padded_token = pad_token(signed_token)
     sso_token = padded_token
 
+    # sso_token = signed_token
     resp = make_response(jsonify({'sso_token': sso_token}))
     resp.set_cookie('sso_token', sso_token, httponly=True, secure=True, samesite='None')
     return resp
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
