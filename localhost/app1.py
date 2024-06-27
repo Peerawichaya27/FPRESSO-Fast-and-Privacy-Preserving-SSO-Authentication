@@ -25,8 +25,11 @@ user_permission = {
     "admin":{"Read, Write, Execute"},
     "users":{"Read, Write"}
 }
-# rolehash_sso_app1 = "0ec703f2c3385d5dbac3d5214b0b9df99e1967fdf791f198b2cb1b866a2c026e"
-# permissionhash_sso_app1 = {"601dcdcfd42a47ba29dc8e40bb840fbfa22877695e64446081c89dd365b6e338":{"perrmissions":{"Read, Write, Execute"}}}
+permission_hash = {
+    "admin":"138c4b0b96c01b0715d870c11c0853592aa32137c421e73827821fe14c9aab6e",
+    "users":"f6e72ec20d183ec2fcb6a11ec25eb944696ad2ba50569fc7264ad1ee363bf105"
+}
+
 
 pKey = """-----BEGIN RSA PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0gr6/AuK3Z+LSQ7sR4z0
@@ -54,11 +57,9 @@ def home():
 def unpadded_token(padded_token):
     try:
         padded_bytes = base64.urlsafe_b64decode(padded_token)
-        R1 = padded_bytes[:128]
         token_bytes = padded_bytes[128:-128]
-        R2 = padded_bytes[-128:]
 
-        print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
+        # print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
         print(f"Token Bytes: {token_bytes}")
 
         # No XOR operation is needed here since we are simply removing R1 and R2
@@ -117,12 +118,21 @@ def protected():
         decoded = jwt.decode(sign_token, app.config['SECRET_KEY'], algorithms=[ALGORITHM])
         username = decoded["userID"]
         rolehash = decoded['roles']["app1"]
+        permissionhash = decoded['permissions']['app1']
         if rolehash == user_role["admin"]:
             role = "admin"
-            permission = user_permission['admin']
+            if permissionhash == permission_hash["admin"]:
+                permission = user_permission["admin"]
+            else:
+                return 'Access denied <a href="/">Login</a>', 403
         elif rolehash == user_role["users"]:
-            role = "user"    
-            permission = user_permission['users']    
+            role = "user"
+            if permissionhash == permission_hash["users"]:
+                permission = user_permission['users']
+            else:
+                return 'Access denied <a href="/">Login</a>', 403
+        else:
+            return 'Access denied <a href="/">Login</a>', 403
         # verify_response = requests.get('http://localhost:8000/verify', headers={'appNo': 'app1'}, cookies={'sso_token': sign_token})
         # if verify_response.status_code == 200:
             # print("200")

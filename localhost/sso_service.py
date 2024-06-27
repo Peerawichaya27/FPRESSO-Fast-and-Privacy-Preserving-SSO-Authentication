@@ -37,20 +37,21 @@ users_data = {
         }
     }
 }
-# permission = {
-#     "app1":{
-#         "admin":{"permissions" : "Read, Write, Execute"},
-#         "user":{"permissions" : "Read, Write"}
-#         },
-#     "app2":{
-#         "admin":{"permissions" : "Read, Write, Execute"},
-#         "user":{"permissions" : "Read, Write"}
-#         },
-#     "app3":{
-#         "admin":{"permissions" : "Read, Write, Execute"},
-#         "user":{"permissions" : "Read, Write"}
-#         }
-#     }
+
+permission = {
+    "app1":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Read, Write"}
+        },
+    "app2":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Write"}
+        },
+    "app3":{
+        "admin":{"permissions" : "Read, Write, Execute"},
+        "user":{"permissions" : "Read"}
+        }
+    }
 
 
 privKey = """-----BEGIN RSA PRIVATE KEY-----
@@ -107,24 +108,27 @@ def generate_sso_token():
     username = request.headers.get('username')
     app_num = request.headers.get('appNo')
     role = users_data[app_num][username]
-    # permissions = permission[app_num]
+    permissions = permission
     user_identity_data = {
         'userID' : username,
         'roles' : role,
-        # 'permissions' : permissions
+        'permissions' : permissions
     }
     jwt_token = {
         "userID": user_identity_data['userID'],
         "roles": user_identity_data['roles'],
-        # "permissions": user_identity_data["permissions"],
-        "app" : app_num,
+        "permissions": user_identity_data["permissions"],
         'exp': datetime.datetime.now() + datetime.timedelta(hours=2)
     }
     
     # hash role permissions
     for n in users_data[app_num][username]:
-        roles_hash = hashlib.sha256(','.join(users_data[app_num][username][n]).encode()).hexdigest()
+        role_list = users_data[app_num][username][n]
+        roles_hash = hashlib.sha256(','.join(role_list).encode()).hexdigest()
         jwt_token['roles'][n] = roles_hash
+        permission_list = permission[n][role_list]['permissions']
+        permission_hash = hashlib.sha256(','.join(permission_list).encode()).hexdigest()
+        jwt_token['permissions'][n] = permission_hash
         # permission_admin_hash = hashlib.sha256(','.join(permission[n]['admin']['permissions']).encode()).hexdigest()
         # permission_user_hash = hashlib.sha256(','.join(permission[n]['user']['permissions']).encode()).hexdigest()
         # jwt_token['permissions'][n]['admin'] = permission_admin_hash
