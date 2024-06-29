@@ -95,10 +95,10 @@ def login():
     username = request.form['username']
     password = request.form['password']
     # Send user data to Authentication Service 1
-    auth_response = requests.post('https://auth-service1-swlzbjlflq-as.a.run.app/authenticate', json={'username': username, 'password': password, 'appNo' : 'app2'})
+    auth_response = requests.post('https://auth-service1-hlcp4m5f5q-as.a.run.app/authenticate', json={'username': username, 'password': password, 'appNo' : 'app2'})
     if auth_response.status_code == 200:
         # Authenticate with SSO service
-        sso_response = requests.get('https://sso-service-swlzbjlflq-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app2'})
+        sso_response = requests.get('https://sso-service-hlcp4m5f5q-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app2'})
         if sso_response.status_code == 200:
             global sso_token
             sso_token = sso_response.json()['sso_token']
@@ -116,8 +116,8 @@ def get_cookie():
 @app.route('/check', methods=['GET'])
 @cross_origin()
 def check():
-    tok_resp = requests.get('https://app1-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app2'})
-    tok2_resp = requests.get('https://3vdwbxffgv.ap-southeast-1.awsapprunner.com/getCookie', headers={'appNo': 'app2'})
+    tok_resp = requests.get('https://app1-hlcp4m5f5q-as.a.run.app/getCookie', headers={'appNo': 'app2'})
+    tok2_resp = requests.get('https://qmur3s7c8j.ap-southeast-2.awsapprunner.com /getCookie', headers={'appNo': 'app2'})
     if tok_resp and tok_resp.json()['sso_token'] != '':
         sso_token = tok_resp.json()['sso_token']
         resp = make_response(redirect('/protected'))

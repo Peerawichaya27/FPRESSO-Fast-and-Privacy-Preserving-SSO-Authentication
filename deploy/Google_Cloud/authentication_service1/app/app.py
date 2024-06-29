@@ -30,7 +30,7 @@ def authenticate():
     appNo = request.json['appNo']
     
     # Normally here you would validate the password. We simulate it.
-    token = jwt.encode({'username': username, 'password': password, 'role': role, 'exp': datetime.datetime.now() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
+    token = jwt.encode({'username': username, 'password': password, 'exp': datetime.datetime.now() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
     if users[appNo]['user_jwt'] == token:
         return jsonify({'status': 'success', 'jwt_token': token}), 200
     return jsonify({'status': 'failure','message': 'Invalid credentials'}), 401

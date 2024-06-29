@@ -8,15 +8,17 @@ from Crypto.Hash import SHA256
 import base64
 import jwt
 
-app = Flask(__name__)
+app = Flask(__name__)  # Ensure this is named 'app'
 app.config['SECRET_KEY'] = 'sso_secret_key'
 ALGORITHM = 'HS256'
 CORS(app)
+
 
 # Simulated user data
 users = {
     "user3": {"password": "pass3"}
 }
+
 user_role = {
     "admin":"35a3716d343040c666a071477427535ada70f74ceee8b9d9058d4412cbe40c52",
     "users":"0b35b922fd1c5853cf65b737f49c49d8ef750946b5939443056d94b3a3510dc6"
@@ -24,8 +26,9 @@ user_role = {
 
 user_permission = {
     "admin":{"Read, Write, Execute"},
-    "users":{"Read"}
+    "users":{"Write"}
 }
+
 permission_hash = {
     "admin":"138c4b0b96c01b0715d870c11c0853592aa32137c421e73827821fe14c9aab6e",
     "users":"7e64a756a018887b63776d859285cdc91012e4834d74d1133e2650ff672770d6"
@@ -57,9 +60,11 @@ def home():
 def unpadded_token(padded_token):
     try:
         padded_bytes = base64.urlsafe_b64decode(padded_token)
+        R1 = padded_bytes[:128]
         token_bytes = padded_bytes[128:-128]
+        R2 = padded_bytes[-128:]
 
-        # print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
+        print(f"Unpadding: R1={R1.hex()}, R2={R2.hex()}")
         print(f"Token Bytes: {token_bytes}")
 
         # No XOR operation is needed here since we are simply removing R1 and R2
@@ -73,7 +78,6 @@ def unpadded_token(padded_token):
     except Exception as e:
         print(f"Error during unpadding: {e}")
         return None
-
 
 def verify_token(signed_token):
     try:
@@ -91,12 +95,11 @@ def verify_token(signed_token):
 def login():
     username = request.form['username']
     password = request.form['password']
-    user = users.get(username)
-    # Send user data to Authentication Service 2
-    auth_response = requests.post('http://authservice2.ap-southeast-1.elasticbeanstalk.com/authenticate', json={'username': username, 'password': password, 'role': user['role'], 'appNo' : 'app3'})
+    # Send user data to Authentication Service 1
+    auth_response = requests.post('http://auth2.ap-southeast-2.elasticbeanstalk.com/authenticate', json={'username': username, 'password': password, 'appNo' : 'app3'})
     if auth_response.status_code == 200:
         # Authenticate with SSO service
-        sso_response = requests.get('https://sso-service-swlzbjlflq-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app3'})
+        sso_response = requests.get('https://sso-service-hlcp4m5f5q-as.a.run.app/authenticate', headers={'username':username, 'appNo': 'app3'})
         if sso_response.status_code == 200:
             global sso_token
             sso_token = sso_response.json()['sso_token']
@@ -114,8 +117,8 @@ def get_cookie():
 @app.route('/check', methods=['GET'])
 @cross_origin()
 def check():
-    tok_resp = requests.get('https://app1-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app3'})
-    tok2_resp = requests.get('https://app2-swlzbjlflq-as.a.run.app/getCookie', headers={'appNo': 'app3'})
+    tok_resp = requests.get('https://app1-hlcp4m5f5q-as.a.run.app/getCookie', headers={'appNo': 'app3'})
+    tok2_resp = requests.get('https://app2-hlcp4m5f5q-as.a.run.app/getCookie', headers={'appNo': 'app3'})
     if tok_resp and tok_resp.json()['sso_token'] != '':
         sso_token = tok_resp.json()['sso_token']
         resp = make_response(redirect('/protected'))
@@ -154,7 +157,7 @@ def protected():
             else:
                 return 'Access denied <a href="/">Login</a>', 403
         else:
-            return 'Access denied <a href="/">Login</a>', 403
+            return 'Access denied <a href="/">Login</a>', 403    
         return render_template_string(f'''
                 <h1>Protected Content</h1>
                 <p>Username: {username}</p>
